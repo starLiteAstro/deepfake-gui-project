@@ -8,7 +8,7 @@ numpy
 pandas
 Pillow
 seaborn
-sklearn
+scikit-learn
 torch
 torchvision
 tqdm
