@@ -9,6 +9,6 @@ pandas
 Pillow
 seaborn
 scikit-learn
-torch
+torch==2.2.0
 torchvision
 tqdm
