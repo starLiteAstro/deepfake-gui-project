@@ -26,11 +26,11 @@ model.eval()
 
 # Transform
 trans_init = []
-if(opt.crop is not None):
+if opt.crop is not None:
   trans_init = [transforms.CenterCrop(opt.crop),]
-  print('Cropping to [%i]'%opt.crop)
+  print('==Cropping to [%i]=='%opt.crop)
 else:
-  print('Not cropping')
+  print('==Not cropping==')
 trans = transforms.Compose(trans_init + [
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
@@ -44,4 +44,4 @@ with torch.no_grad():
     in_tens = in_tens.cuda()
   prob = model(in_tens).sigmoid().item()
 
-print('probability of being synthetic: {:.2f}%'.format(prob * 100))
+print('Probability of being synthetic: {:.2f}%'.format(prob * 100))

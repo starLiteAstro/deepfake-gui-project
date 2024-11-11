@@ -4,5 +4,6 @@ __pycache__
 *.sbatch
 *.out
 *.err
+config.py
 
 detectors/wang2020/weights/

@@ -6,9 +6,11 @@ lmdb
 matplotlib
 numpy
 pandas
+paramiko
 Pillow
 seaborn
 scikit-learn
-torch==2.2.0
+torch
+torchaudio
 torchvision
 tqdm
