@@ -1,6 +1,9 @@
 """A Tkinter GUI application to input an image and get the GAN prediction of the image."""
-from tkinter import Tk, filedialog, Label, Toplevel, Frame, Button, messagebox
+from tkinter import Tk, filedialog, Label, Toplevel, Frame, Button, Listbox
 from PIL import Image, ImageTk
+from src.image import dct, fft, spectral_density
+from functools import partial
+import cytoolz
 import config
 import os
 import time
@@ -20,30 +23,50 @@ root.title("GAN Image Checker")
 root.geometry("800x600")
 
 filename = None
+imgs = []
 
 def open_file():
     """Open a file dialog to select an image."""
     global filename
-    global img
+    global imgs
+    global img_list
     global img_frame
     global dft_img_frame
 
-    if img_frame is not None:
-        img_frame.destroy()
-
-    if dft_img_frame is not None:
-        dft_img_frame.destroy()
-
-    img_frame = Frame(root, width=300, height=300, bg="lightgrey")
-    img_frame.grid(row=1, column=0, rowspan=3, columnspan=3, padx=20, pady=20)
-
-    filename = filedialog.askopenfilename(initialdir="~/cs310/cs310-project/detectors/wang2020/examples", title="Select Image", filetypes=(("Image files", "*.jpg, *.jpeg, *.png"), ("All files", "*.*")))
+    filename = filedialog.askdirectory(initialdir="/dcs/large/u2201755/FFHQ")
+    
     if filename:
-        # Create image label
-        img = ImageTk.PhotoImage(Image.open(filename))
-        # Create label to display image
-        img_label = Label(img_frame, image=img, text="Image will go here", bg="lightgrey")
-        img_label.place(relx=0.5, rely=0.5, anchor="center")
+        # Clear the image list
+        img_list.delete(0, "end")
+        imgs = []
+        # Clear the image frame
+        if img_frame is not None:
+            img_frame.destroy()
+        # Clear the DFT image frame
+        if dft_img_frame is not None:
+            dft_img_frame.destroy()
+        
+        img_list = Listbox(selection_container, width=20, height=15, bg="lightgrey")
+        img_list.grid(row=1, column=0, rowspan=3, columnspan=1, padx=2, pady=2)
+        img_list.bind("<<ListboxSelect>>", show_selected_image)
+        # Create a new image frame
+        img_frame = Frame(selection_container, width=150, height=150, bg="lightgrey")
+        img_frame.grid(row=1, column=1, rowspan=2, columnspan=1, padx=2, pady=2)
+        # Bind the Listbox selection event to the show_selected_image function
+
+        dft_img_frame = Frame(root, width=300, height=300, bg="lightgrey")
+        dft_img_frame.grid(row=1, column=3, rowspan=3, columnspan=3, padx=20, pady=20)
+
+        # For each image in the directory
+        for file in os.listdir(filename):
+            # If the file is not an image, skip it
+            if not file.endswith((".jpg", ".jpeg", ".png")):
+                continue
+            # Create image label
+            img = Image.open(os.path.join(filename, file))
+            imgs.append(img)
+            # Add image to list of images
+            img_list.insert("end", file)
         # Enable the buttons
         check_button.config(state="normal")
         update_status("Run 'Check fakeness' to get GAN prediction of fakeness. This may take a few seconds.")
@@ -104,48 +127,93 @@ def check_image():
     # Output the GAN prediction from the log file
     with open("output_log.out", "r") as f:
         output = f.read()
-        update_status(output)
+    update_status(output)
+    print(output)
     print("Successfully ran GAN prediction!")
 
 
 def dft_image():
-    global filename
     global dft_img_frame
     global info_label
+    global dft_button
 
+    # Get average of all images
+    avg = None
+    for img in imgs:
+        img = np.array(img)
+        if avg is None:
+            avg = img.astype(np.float32)
+        else:
+            avg += img.astype(np.float32)
+    
+    avg = avg / len(imgs)
+    avg = avg.astype(np.uint8)
+    avg = Image.fromarray(avg)
+    avg = avg.convert("L")
+    avg = avg.resize((300, 300))
+
+    # Get the 2D discrete Fourier transform of the image
+    dft = np.fft.fft2(avg)
+    dft = np.fft.fftshift(dft)
+    dft = np.abs(dft)
+    dft = np.log(dft)
+    dft = dft * 20
+    dft = dft.astype(np.uint8)
+    dft = Image.fromarray(dft)
+    dft = dft.resize((300, 300))
+    dft_tk = ImageTk.PhotoImage(dft)
+
+    # Clear the previous DFT image frame
     if dft_img_frame is not None:
         dft_img_frame.destroy()
 
+    # Create a new DFT image frame
     dft_img_frame = Frame(root, width=300, height=300, bg="lightgrey")
     dft_img_frame.grid(row=1, column=3, rowspan=3, columnspan=3, padx=20, pady=20)
 
-    if filename:
-        # Load the image
-        img = Image.open(filename)
-        # Convert the image to grayscale
-        img = img.convert("L")
-        # Resize the image to 256x256
-        img = img.resize((256, 256))
-        # Create a numpy array from the image
-        img_np = np.array(img)
-        # Perform the DFT
-        dft = np.fft.fft2(img_np)
-        dft_shift = np.fft.fftshift(dft)
-        magnitude_spectrum = 20 * np.log(np.abs(dft_shift))
+    # Create a label to display the DFT image
+    dft_img_label = Label(dft_img_frame, image=dft_tk, bg="lightgrey")
+    dft_img_label.image = dft_tk
+    dft_img_label.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Create the DFT image
-        dft_img = Image.fromarray(magnitude_spectrum)
-        dft_img = ImageTk.PhotoImage(dft_img)
+    # Update the info label
+    info_label.config(text="The 2D discrete Fourier transform of the image has been visualised.", wraplength=280)
+    dft_button.config(state="disabled")
 
-        # Create label to display DFT image
-        dft_img_label = Label(dft_img_frame, image=dft_img, text="DFT Image will go here", bg="lightgrey")
-        dft_img_label.image = dft_img
-        dft_img_label.place(relx=0.5, rely=0.5, anchor="center")
-        info_label.config(text="DFT image displayed.", wraplength=280)
-        dft_button.config(state="disabled")
-        print("Successfully visualised DFT!")
-    else:
-        info_label.config(text="No image loaded.", wraplength=280)
+def show_selected_image(event):
+    """Display the selected image in a frame."""
+    global imgs
+    global img_frame
+
+    # Get the selected index
+    selected_index = img_list.curselection()
+    if not selected_index:
+        return
+
+    # Get the selected image
+    selected_image = imgs[selected_index[0]]
+
+    # Clear the previous image display frame
+    if img_frame is not None:
+        img_frame.destroy()
+
+    # Create a new frame to display the selected image
+    img_frame = Frame(selection_container, width=150, height=250, bg="lightgrey")
+    img_frame.grid(row=1, column=1, rowspan=2, columnspan=1, padx=2, pady=2)
+
+    # Resize the image to fit the frame
+    selected_image = selected_image.resize((150, 150))
+    img_tk = ImageTk.PhotoImage(selected_image)
+
+    # Create a label to display the image
+    img_label = Label(img_frame, image=img_tk, bg="lightgrey")
+    img_label.image = img_tk
+    img_label.place(relx=0.5, rely=0.5, anchor="center")
+
+    # Create a label to display the image number
+    img_number_label = Label(img_frame, text=f"Image {selected_index[0] + 1} of {len(imgs)}", bg="lightgrey")
+    img_number_label.place(relx=0.5, rely=0.9, anchor="center")
+
 
 
 # Button container on top-left corner
@@ -153,7 +221,7 @@ button_container = Frame(root, relief="raised", borderwidth=1)
 button_container.grid(row=0, column=0, padx=20, pady=20)
 
 # Open button to open an image
-open_button = Button(button_container, text="Open image", command=open_file)
+open_button = Button(button_container, text="Open folder", command=open_file)
 open_button.grid(row=0, column=0)
 # GAN check button initially disabled
 check_button = Button(button_container, text="Check fakeness", command=check_image, state="disabled")
@@ -162,9 +230,17 @@ check_button.grid(row=0, column=1)
 dft_button = Button(button_container, text="Visualise DFT", command=dft_image, state="disabled")
 dft_button.grid(row=0, column=2)
 
-# Image frame border
-img_frame = Frame(root, width=300, height=300, bg="lightgrey")
-img_frame.grid(row=1, column=0, rowspan=3, columnspan=3, padx=20, pady=20)
+# Selection container on middle=left corner
+selection_container = Frame(root, relief="raised", borderwidth=1)
+selection_container.grid(row=1, column=0, padx=20, pady=20)
+
+# Image list frame border
+img_list = Listbox(selection_container, width=20, height=15, bg="lightgrey")
+img_list.grid(row=1, column=0, rowspan=3, columnspan=1, padx=2, pady=2)
+# Image display frame border
+img_frame = Frame(selection_container, width=150, height=150, bg="lightgrey")
+img_frame.grid(row=1, column=1, rowspan=2, columnspan=1, padx=2, pady=2)
+
 # Status border
 status_frame = Frame(root, width=300, height=100, bg="lightgrey")
 status_frame.grid(row=4, column=0, rowspan=2, columnspan=3, padx=20, pady=20)
