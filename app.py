@@ -149,7 +149,9 @@ def dft_image():
     avg = avg / len(imgs)
     avg = avg.astype(np.uint8)
     avg = Image.fromarray(avg)
+    # Convert the image to grayscale
     avg = avg.convert("L")
+    # Resize the image to 300x300
     avg = avg.resize((300, 300))
 
     # Get the 2D discrete Fourier transform of the image
