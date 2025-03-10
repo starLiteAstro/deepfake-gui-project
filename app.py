@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import os
 import time
 import sys
+import subprocess
 import threading
 import torch
 import torch.nn
@@ -258,7 +259,7 @@ def open_folder():
 
         # Enable the buttons
         check_button.config(state="normal")
-        update_status("Run 'Check fakeness' to get GAN prediction of fakeness. This may take a few seconds.")
+        update_status("Run 'Check accuracy' to get GAN prediction of fakeness. This may take a few seconds.")
         dft_button.config(state="normal")
 
         # Enable the residuals combobox
@@ -280,28 +281,32 @@ def ssh_and_run():
     global dirname
     """SSH into the server and run the GAN prediction."""
     try:
+        # Delete old stdout files
+        if os.path.exists(f"{config.cur_dir}/output_log.out"):
+            os.remove(f"{config.cur_dir}/output_log.out")
+        if os.path.exists(f"{config.cur_dir}/error_log.err"):
+            os.remove(f"{config.cur_dir}/error_log.err")
+
         # SSH into the server
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect('kudu', username=config.username, password=config.password)
-        # Delete old stdout files
-        stdin, stdout, stderr = client.exec_command(f"rm cs310/cs310-project/error_log.err && rm cs310/cs310-project/output_log.out")
+        
         # Run the GAN prediction
         if single_image is not None:
-            stdin, stdout, stderr = client.exec_command(f"cd cs310/cs310-project && sbatch --export=FILE_PATH={dirname} demo.sbatch")
+            client.exec_command(f"cd cs310/cs310-project && sbatch --export=FILE_PATH={dirname} demo.sbatch")
         else:
-            stdin, stdout, stderr = client.exec_command(f"cd cs310/cs310-project && sbatch --export=DIR_PATH={dirname} demo_dir.sbatch")
+            client.exec_command(f"cd cs310/cs310-project && sbatch --export=DIR_PATH={dirname} demo_dir.sbatch")
 
         # Wait for output_log.out to contain the output, timeout after 60 seconds
-        update_status("Waiting for GAN prediction output...")
+        update_status("Computing accuracy...")
         timeout = 60
         timeout_time = time.time() + timeout
+        result = ""
 
         while True:
-            _, stdout, _ = client.exec_command(f"wc -l < ~/cs310/cs310-project/output_log.out")
-            lines = stdout.read().decode()
-            print(lines)
-            if "5" in lines:
+            result = subprocess.run(["cat", "/dcs/22/u2201755/cs310/cs310-project/output_log.out"], capture_output=True, text=True)
+            if "Probability of being synthetic" in result.stdout or "AP:" in result.stdout:
                 break
             if time.time() > timeout_time:
                 # Timeout error root
@@ -316,15 +321,13 @@ def ssh_and_run():
                 open_folder_button.config(state="normal")
                 check_button.config(state="normal")
                 dft_button.config(state="normal")
-                update_status("Run 'Check fakeness' to get GAN prediction of fakeness. This may take a few seconds.")
+                update_status("Run 'Check accuracy' to get GAN prediction of fakeness. This may take a few seconds.")
                 return
 
         # Get the output of the job
-        stdin, stdout, stderr = client.exec_command(f"cat ~/cs310/cs310-project/output_log.out")
-        res = stdout.read().decode()
-        update_status(res)
+        update_status(result.stdout)
         client.close()
-        print("Successfully ran GAN prediction!")
+        print("Successfully ran GAN accuracy check!")
         # Reactivate buttons
         open_file_button.config(state="normal")
         open_folder_button.config(state="normal")
@@ -436,7 +439,7 @@ def analyse_image():
     dft_img_label.place(relx=0.5, rely=0.5, anchor="center")
 
     # Update the tab control
-    dft_tab_control.add(dft_img_frame, text="Image")
+    dft_tab_control.add(dft_img_frame, text="2D DFT")
 
     # Create a 3D plot of the FFT magnitude
     x = np.arange(dft_norm.shape[1])
