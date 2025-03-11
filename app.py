@@ -3,25 +3,16 @@ from tkinter import Tk, filedialog, Label, Toplevel, Frame, Button, Listbox, ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from PIL import Image, ImageTk, ImageFilter
 from src.image import dct, fft, spectral_density
-from functools import partial
-from mpl_toolkits.mplot3d import Axes3D
-import cytoolz
 import config
 import matplotlib
 import matplotlib.pyplot as plt
 import os
 import time
-import sys
 import subprocess
 import threading
-import torch
-import torch.nn
-import argparse
 import numpy as np
 import paramiko
 import scipy.stats as stats
-import torchvision.transforms as transforms
-import torchvision.datasets as datasets
 from PIL import Image
 from detectors.wang2020.networks.resnet import resnet50
 matplotlib.use('agg')
@@ -115,7 +106,7 @@ def open_file():
         fingerprint_frame.grid(row=1, column=3, rowspan=3, columnspan=3, padx=20, pady=20)
 
         dft_tab_control.add(dft_img_frame, text="2D DFT")
-        dft_tab_control.add(dft_plot_frame, text="3D DFT Plot")
+        dft_tab_control.add(dft_plot_frame, text="3D Plot")
         dft_tab_control.add(dft_power_frame, text="Power Spectrum")
         dft_tab_control.add(fingerprint_frame, text="Fingerprint")
 
@@ -133,7 +124,7 @@ def open_file():
         
         # Enable the buttons
         check_button.config(state="normal")
-        update_status("Run 'Check accuracy to get GAN prediction of fakeness. This may take a few seconds.")
+        update_status("Run 'Check accuracy' to get the GAN prediction of realness. This may take a few seconds.")
         dft_button.config(state="normal")
 
         # Enable the residuals combobox
@@ -221,7 +212,7 @@ def open_folder():
         fingerprint_frame.grid(row=1, column=3, rowspan=3, columnspan=3, padx=20, pady=20)
 
         dft_tab_control.add(dft_img_frame, text="2D DFT")
-        dft_tab_control.add(dft_plot_frame, text="3D DFT Plot")
+        dft_tab_control.add(dft_plot_frame, text="3D Plot")
         dft_tab_control.add(dft_power_frame, text="Power Spectrum")
         dft_tab_control.add(fingerprint_frame, text="Fingerprint")
 
@@ -265,7 +256,8 @@ def open_folder():
         # Enable the residuals combobox
         residuals = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
         residuals = [x for x in residuals if x <= len(real_imgs)]
-        res_combo.config(state="normal", values=residuals, textvariable=1)
+        res_combo.config(state="readonly", values=residuals, textvariable=1)
+        res_combo.current(0)
         res_val = 1
         info_label.config(text="Run 'Analyse' to see the 2D DFT, power spectrum and fingerprint of the image(s).", wraplength=280)
 
@@ -321,7 +313,7 @@ def ssh_and_run():
                 open_folder_button.config(state="normal")
                 check_button.config(state="normal")
                 dft_button.config(state="normal")
-                update_status("Run 'Check accuracy' to get GAN prediction of fakeness. This may take a few seconds.")
+                update_status("Run 'Check accuracy' to get GAN prediction of realness. This may take a few seconds.")
                 return
 
         # Get the output of the job
@@ -665,7 +657,7 @@ def on_tab_change(event):
         residuals = [x for x in residuals if x <= len(real_imgs)]
     else:
         residuals = [x for x in residuals if x <= len(fake_imgs)]
-    res_combo.config(state="normal", values=residuals)
+    res_combo.config(state="readonly", values=residuals)
     """Disable the DFT button if the tab is the DFT tab
     if dft_index != -1:
         if tab_index == dft_index:
@@ -749,7 +741,7 @@ fingerprint_frame.grid(row=1, column=3, rowspan=3, columnspan=3, padx=20, pady=2
 
 # Add the DFT frames to the tab control
 dft_tab_control.add(dft_img_frame, text="2D DFT")
-dft_tab_control.add(dft_plot_frame, text="3D DFT Plot")
+dft_tab_control.add(dft_plot_frame, text="3D Plot")
 dft_tab_control.add(dft_power_frame, text="Power Spectrum")
 dft_tab_control.add(fingerprint_frame, text="Fingerprint")
 
