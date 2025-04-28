@@ -1,5 +1,6 @@
 """A Tkinter GUI application to input an image and get the GAN prediction of the image."""
-from tkinter import Tk, filedialog, Label, Toplevel, Frame, Button, Listbox, ttk
+from idlelib.tooltip import Hovertip
+from tkinter import Tk, filedialog, Label, Toplevel, Frame, Button, Listbox, messagebox, ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from PIL import Image, ImageTk, ImageFilter
 from src.image import dct, fft, spectral_density
@@ -240,12 +241,12 @@ def open_folder():
                 fake_imgs.append(img)
                 # Add image to list of images
                 fake_img_list.insert("end", file)
+            # If the fake directory is empty, return an error
+            if len(fake_imgs) == 0:
+                messagebox.showerror("Error", "\"1_fake\" folder cannot be empty.")
+                return
         else:
-            error = Toplevel(root)
-            error.title("Error")
-            error.geometry("200x100")
-            error_label = Label(error, text=f"Missing 1_fake or 0_real folder.")
-            error_label.place(relx=0.5, rely=0.5, anchor="center")
+            messagebox.showerror("Error", "Missing 1_fake or 0_real folder.")
             return
 
         # Enable the buttons
@@ -254,13 +255,14 @@ def open_folder():
         dft_button.config(state="normal")
 
         # Enable the residuals combobox
-        residuals = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
-        residuals = [x for x in residuals if x <= len(real_imgs)]
-        res_combo.config(state="readonly", values=residuals, textvariable=1)
-        res_combo.current(0)
-        res_val = 1
+        if len(real_imgs) > 0:
+            residuals = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+            residuals = [x for x in residuals if x <= len(real_imgs)]
+            res_combo.config(state="readonly", values=residuals, textvariable=1)
+            res_combo.current(0)
+            res_val = 1
+        assert len(fake_imgs) > 0, "Fake images list is empty."
         info_label.config(text="Run 'Analyse' to see the 2D DFT, power spectrum and fingerprint of the image(s).", wraplength=280)
-
 
 def update_status(status):
     """Update the status label."""
@@ -270,8 +272,8 @@ def update_status(status):
 
 
 def ssh_and_run():
-    global dirname
     """SSH into the server and run the GAN prediction."""
+    global dirname
     try:
         # Delete old stdout files
         if os.path.exists(f"{config.cur_dir}/output_log.out"):
@@ -301,13 +303,9 @@ def ssh_and_run():
             if "Probability of being synthetic" in result.stdout or "AP:" in result.stdout:
                 break
             if time.time() > timeout_time:
-                # Timeout error root
+                # Timeout error
                 client.close()
-                error = Toplevel(root)
-                error.title("Error")
-                error.geometry("500x100")
-                error_label = Label(error, text=f"Timed out waiting for GAN prediction output after {timeout} seconds.")
-                error_label.place(relx=0.5, rely=0.5, anchor="center")
+                messagebox.showerror("Error", f"Timed out waiting for GAN prediction output after {timeout} seconds.")
                 # Reactivate buttons
                 open_file_button.config(state="normal")
                 open_folder_button.config(state="normal")
@@ -402,7 +400,7 @@ def analyse_image():
         # Place the original image in the center of the new array
         padded_array[x_offset:x_offset + avg_array.shape[0], y_offset:y_offset + avg_array.shape[1]] = avg_array
         return padded_array
-    
+
     #avg = zero_pad(avg_array)
 
     def compute_dft(avg):
@@ -411,13 +409,14 @@ def analyse_image():
         dft = np.fft.fft2(avg)
         dft = np.fft.fftshift(dft)
         dft = np.abs(dft)
-        dft_log = np.log(dft + 1)
-        dft_norm = 255 * (dft_log - np.min(dft_log)) / (np.max(dft_log) - np.min(dft_log))
-        return dft_norm
-    
+        dft = np.log(dft)
+        dft = dft * 20
+        return dft
+
     dft_norm = compute_dft(avg_gray)
     dft_img = dft_norm.astype(np.uint8)
     dft_img = Image.fromarray(dft_img)
+    # dft_img.save(f"dft_adm.png")
     dft_img = dft_img.resize((350, 350))
     dft_tk = ImageTk.PhotoImage(dft_img)
 
@@ -483,17 +482,20 @@ def analyse_image():
     A_bins, _, _ = stats.binned_statistic(k_norm, fft_amps, bins=k_bins, statistic='mean')
 
     # Create a power spectrum plot
-    fig_power = plt.figure(figsize=(2, 2))
+    fig_power = plt.figure(figsize=(3.5, 3.5))
     ax_power = fig_power.add_subplot(111)
     ax_power.plot(k_vals, A_bins)
     ax_power.set_xlabel('Frequency')
     ax_power.set_ylabel('Power')
-
+    # Log scale for both axes for better visualisation
     ax_power.set_yscale('log')
     ax_power.set_xscale('log')
 
+    # Adjust layout to prevent labels from being cut off
+    fig_power.tight_layout()
+
     # Create a new power spectrum frame
-    dft_power_frame = Frame(dft_tab_control, width=450, height=450, bg="lightgrey")
+    dft_power_frame = Frame(dft_tab_control, width=350, height=350, bg="lightgrey")
     dft_power_frame.grid(row=1, column=3, rowspan=3, columnspan=3, padx=20, pady=20)
 
     # Plot the power spectrum as an image
@@ -525,8 +527,6 @@ def analyse_image():
         residuals = []
         for i in selected_imgs:
             img = img_list[i]
-            # Resize the image to 256x256
-            img = img.resize((256, 256))
             # Convert to NumPy array
             img = np.array(img)
             residuals.append(compute_fingerprint(img))
@@ -538,6 +538,8 @@ def analyse_image():
         # Convert the average to an image
         avg_residual = avg_residual.astype(np.uint8)
         avg_residual = Image.fromarray(avg_residual, mode="RGB")
+        # Save image
+        # avg_residual.save(f"fingerprint_{n}_adm.png")
         return avg_residual
 
     if single_image is not None:
@@ -686,6 +688,7 @@ open_file_button.grid(row=0, column=0)
 # Open button to open an image folder
 open_folder_button = Button(button_container, text="Open folder", command=open_folder)
 open_folder_button.grid(row=0, column=1)
+open_tooltip = Hovertip(open_folder_button, "The folder must contain two subfolders: \"0_real\" containing real images and \"1_fake\" containing fake ones.\n\"1_fake\" cannot be empty.")
 # GAN check button initially disabled
 check_button = Button(button_container, text="Check accuracy", command=ssh_in_bg, state="disabled")
 check_button.grid(row=0, column=2)
