@@ -4,6 +4,8 @@ This project is an extension of Ricker et al.'s work described below.
 
 The code is located in app.py. Before running, make sure to complete (1) Setup in detectors/wang2020.
 
+The test datasets were taken from https://zenodo.org/record/7528113 (also linked below).
+
 ---
 
 # [VISAPP2024] Towards the Detection of Diffusion Model Deepfakes

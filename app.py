@@ -668,7 +668,7 @@ def on_tab_change(event):
             dft_button.config(state="normal")"""
 
 
-def on_res_change():
+def on_res_change(event):
     """Update the residuals when the combobox is changed."""
     global res_combo
     global res_val
@@ -694,6 +694,7 @@ check_button.grid(row=0, column=2)
 # DFT button initially disabled
 dft_button = Button(button_container, text="Analyse", command=start_dft_in_bg, state="disabled")
 dft_button.grid(row=0, column=3)
+dft_button_tooltip = Hovertip(dft_button, "This button only visually analyses the fake images.")
 
 # Selection container on middle-left corner
 selection_container = Frame(root, relief="raised", borderwidth=1)
@@ -763,4 +764,22 @@ info_frame.grid(row=5, column=3, rowspan=1, columnspan=3, padx=20, pady=20)
 info_label = Label(info_frame, text="No image loaded.", bg="lightgrey")
 info_label.place(relx=0.5, rely=0.5, anchor="center")
 
+# Bind 1, 2, 3 and 4 to the visualisation tab
+def on_key_press(event):
+    """Bind the 1, 2, 3 and 4 keys to the visualisation tab."""
+    global dft_index
+    if event.char == "1":
+        dft_index = 0
+        dft_tab_control.select(dft_img_frame)
+    elif event.char == "2":
+        dft_index = 1
+        dft_tab_control.select(dft_plot_frame)
+    elif event.char == "3":
+        dft_index = 2
+        dft_tab_control.select(dft_power_frame)
+    elif event.char == "4":
+        dft_index = 3
+        dft_tab_control.select(fingerprint_frame)
+
+root.bind("<KeyPress>", on_key_press)
 root.mainloop()
