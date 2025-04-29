@@ -1,3 +1,11 @@
+# CS310 Third Year Project
+
+This project is an extension of Ricker et al.'s work described below.
+
+The code is located in app.py. Before running, make sure to complete (1) Setup in detectors/wang2020.
+
+---
+
 # [VISAPP2024] Towards the Detection of Diffusion Model Deepfakes
 [Jonas Ricker](https://jonasricker.com), [Simon Damm](https://informatik.rub.de/ml/people/damm/), [Thorsten Holz](https://cispa.de/de/people/c01thho), [Asja Fischer](https://informatik.rub.de/fischer/)  
 International Conference on Computer Vision Theory and Applications (VISAPP), 2024

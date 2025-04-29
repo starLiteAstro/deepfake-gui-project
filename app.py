@@ -668,11 +668,10 @@ def on_tab_change(event):
             dft_button.config(state="normal")"""
 
 
-def on_res_change(event):
+def on_res_change():
     """Update the residuals when the combobox is changed."""
     global res_combo
     global res_val
-    global info_label
 
     # Get the selected residuals value
     res_val = int(res_combo.get())
