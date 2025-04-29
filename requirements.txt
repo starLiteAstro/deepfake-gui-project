@@ -8,6 +8,7 @@ numpy
 pandas
 paramiko
 Pillow
+pytest
 seaborn
 scikit-learn
 torch

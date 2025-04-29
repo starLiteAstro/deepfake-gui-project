@@ -1,9 +1,8 @@
 """A Tkinter GUI application to input an image and get the GAN prediction of the image."""
 from idlelib.tooltip import Hovertip
-from tkinter import Tk, filedialog, Label, Toplevel, Frame, Button, Listbox, messagebox, ttk
+from tkinter import Tk, filedialog, Label, Frame, Button, Listbox, messagebox, ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from PIL import Image, ImageTk, ImageFilter
-from src.image import dct, fft, spectral_density
 import config
 import matplotlib
 import matplotlib.pyplot as plt
@@ -261,7 +260,6 @@ def open_folder():
             res_combo.config(state="readonly", values=residuals, textvariable=1)
             res_combo.current(0)
             res_val = 1
-        assert len(fake_imgs) > 0, "Fake images list is empty."
         info_label.config(text="Run 'Analyse' to see the 2D DFT, power spectrum and fingerprint of the image(s).", wraplength=280)
 
 def update_status(status):
@@ -416,7 +414,6 @@ def analyse_image():
     dft_norm = compute_dft(avg_gray)
     dft_img = dft_norm.astype(np.uint8)
     dft_img = Image.fromarray(dft_img)
-    # dft_img.save(f"dft_adm.png")
     dft_img = dft_img.resize((350, 350))
     dft_tk = ImageTk.PhotoImage(dft_img)
 
@@ -465,18 +462,18 @@ def analyse_image():
 
     # Compute the power spectrum
     avg_gray_array = np.array(avg_gray)
-    n = avg_gray_array.shape[0]
-
+    n = avg_gray_array.shape[0] # Assuming square image
+    # Compute the 2D FFT of the image
     fft_img = np.fft.fftn(avg_gray)
     fft_amps = np.abs(fft_img)**2
-
+    # Compute the frequency bins
     k_freq = np.fft.fftfreq(n) * n
     k_freq_2d = np.meshgrid(k_freq, k_freq)
     k_norm = np.sqrt(k_freq_2d[0]**2 + k_freq_2d[1]**2)
-
+    # Normalize the k values
     k_norm = k_norm.flatten()
     fft_amps = fft_amps.flatten()
-
+    # Create bins for the k values
     k_bins = np.arange(0.5, n//2+1, 1.)
     k_vals = 0.5 * (k_bins[1:] + k_bins[:-1])
     A_bins, _, _ = stats.binned_statistic(k_norm, fft_amps, bins=k_bins, statistic='mean')
