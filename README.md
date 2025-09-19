@@ -1,4 +1,4 @@
-# CS310 Third Year Project
+# Third Year Project - Deepfake detection interface
 
 This project is an extension of work done by Wang et al. (2020) and Ricker et al. (2022) found below.
 
