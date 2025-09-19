@@ -2,7 +2,7 @@
 
 This project is an extension of work done by Wang et al. (2020) and Ricker et al. (2022) found below.
 
-The new code is located in app.py. Before running, make sure to complete (1) Setup in detectors/wang2020.
+The new code is located in [app.py](app.py). Before running, make sure to complete (1) Setup in [detectors/wang2020](detectors/wang2020).
 
 The test datasets were taken from https://zenodo.org/record/7528113 (also linked below).
 
