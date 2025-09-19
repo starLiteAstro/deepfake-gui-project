@@ -4,6 +4,8 @@ This project is an extension of work done by Wang et al. (2020) and Ricker et al
 
 The new code is located in [app.py](app.py). Before running, make sure to complete (1) Setup in [detectors/wang2020](detectors/wang2020).
 
+The models are currently run through the University of Warwick DCS batch compute nodes, so a valid DCS username and password is required for [config.py](config.py).
+
 The test datasets were taken from https://zenodo.org/record/7528113 (also linked below).
 
 ---
